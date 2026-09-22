@@ -145,10 +145,12 @@ def reciprocal_rank_fusion(
     # Rank vector results (1-indexed)
     for rank, item in enumerate(vector_results, start=1):
         item_id = str(item.get("chunk_id", f"vec_{rank}"))
+        doc_src = item.get("metadata", {}).get("source") or item.get("source") or item_id
         rrf_scores[item_id] = rrf_scores.get(item_id, 0.0) + (1.0 / (k + rank))
         content_map[item_id] = {
             "source": "vector",
             "id": item_id,
+            "doc_name": doc_src,
             "text": item.get("text", ""),
             "original_score": item.get("similarity_score", 0.0),
         }
@@ -156,10 +158,12 @@ def reciprocal_rank_fusion(
     # Rank graph results (1-indexed)
     for rank, item in enumerate(graph_results, start=1):
         item_id = str(item.get("triple_id", f"trip_{rank}"))
+        doc_src = item.get("source") or item_id
         rrf_scores[item_id] = rrf_scores.get(item_id, 0.0) + (1.0 / (k + rank))
         content_map[item_id] = {
             "source": "graph",
             "id": item_id,
+            "doc_name": doc_src,
             "text": f"({item.get('subject')}) -[{item.get('predicate')}]-> ({item.get('object_') or item.get('object')})",
             "original_score": item.get("weight", 1.0),
         }

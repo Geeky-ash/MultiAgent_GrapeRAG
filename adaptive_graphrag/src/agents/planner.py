@@ -19,17 +19,21 @@ class PlannerAgent:
         self.user_template = PromptTemplates.PLANNER_USER_TEMPLATE
 
     def _extract_entities_heuristic(self, query: str) -> List[str]:
-        """Extracts prominent named entities and domain tokens from query."""
+        """Extracts prominent named entities and domain phrases from query."""
         known_entities = [
             "TSMC", "Apple", "Nvidia", "ASML", "Qualcomm", "Arm",
             "Intel", "Microsoft_Azure", "OpenAI", "Transformer", "Transformers"
         ]
         found = [e for e in known_entities if e.lower() in query.lower()]
         
-        # Regex capitalized phrases
-        regex_matches = re.findall(r"\b[A-Z][a-zA-Z0-9_-]+\b", query)
-        for match in regex_matches:
-            if match not in found and match not in {"What", "How", "Why", "When", "Find", "Compare", "List"}:
+        # Multi-word capitalized phrases (e.g. "Project Aether", "QuantumTech Foundry")
+        for p in re.findall(r"\b[A-Z][a-zA-Z0-9_-]+(?:\s+[A-Z][a-zA-Z0-9_-]+)+\b", query):
+            if p not in found: found.append(p)
+
+        # Single capitalized words excluding common interrogatives
+        stopwords = {"What", "How", "Why", "When", "Which", "Who", "Whom", "Whose", "Find", "Compare", "List", "Does", "Is", "Are", "Can", "Tell"}
+        for match in re.findall(r"\b[A-Z][a-zA-Z0-9_-]+\b", query):
+            if match not in found and match not in stopwords:
                 found.append(match)
                 
         return found or ["General_Topic"]

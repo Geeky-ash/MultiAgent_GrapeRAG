@@ -95,3 +95,6 @@ class GraphRAGState(TypedDict):
     memory_logs: List[str]
     execution_trace: List[Dict[str, Any]]
     fallback_invoked: bool
+    numerical_extractions: Dict[str, Any]
+    math_verification: Dict[str, Any]
+    uploaded_documents: List[str]

@@ -1,147 +1,211 @@
-"""Enterprise Dark Theme Styles and Custom CSS Tokens for Streamlit Console."""
+"""Editorial Design System Tokens and Styling (Stitch Specification).
 
-CUSTOM_CSS = """
+Color Palette:
+- Primary Background: Soft sky / slate blue (#9BB8D4 / #A8C4E0)
+- Accent & Typography: Deep espresso brown (#3A2219)
+- Container Surface: Warm cream (#FDFBF7 / #EFE9E0)
+- Hairline Borders: Warm sand (#E2E8F0 / #D8CFC4)
+"""
+
+EDITORIAL_CSS = """
 <style>
-    /* Global Theme Overrides */
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    /* Global Base Canvas */
     .stApp {
-        background-color: #0D1117;
-        color: #F0F6FC;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #9BB8D4;
+        background-image: linear-gradient(180deg, #9BB8D4 0%, #A8C4E0 100%);
+        color: #3A2219;
+        font-family: 'Newsreader', Georgia, serif;
     }
 
-    /* Top Telemetry Header */
-    .telemetry-header {
+    /* Editorial Header Bar */
+    .editorial-header {
+        background: #FDFBF7;
+        border: 1px solid #EFE9E0;
+        border-radius: 12px;
+        padding: 16px 22px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 16px rgba(58, 34, 25, 0.06);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-bottom: 12px;
-        margin-bottom: 16px;
-        border-bottom: 1px solid #30363D;
+        flex-wrap: wrap;
+        gap: 12px;
     }
-    .telemetry-badge {
+    .editorial-title {
+        font-family: 'Newsreader', Georgia, serif;
+        font-size: 24px;
+        font-weight: 700;
+        color: #3A2219;
+        letter-spacing: -0.015em;
+        line-height: 1.2;
+    }
+    .editorial-subtitle {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 13px;
+        color: #6E5347;
+    }
+    .editorial-pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(99, 102, 241, 0.12);
-        border: 1px solid #6366F1;
-        color: #818CF8;
-        padding: 4px 12px;
-        border-radius: 9999px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
         font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.05em;
+        font-weight: 600;
         text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        background: #EFE9E0;
+        color: #3A2219;
+        border: 1px solid #D8CFC4;
     }
-    .pulse-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background-color: #10B981;
-        box-shadow: 0 0 8px #10B981;
+    .editorial-dot { width: 7px; height: 7px; border-radius: 50%; background-color: #2D6A4F; }
+
+    /* Cream Container Cards */
+    .editorial-card {
+        background: #FDFBF7;
+        border: 1px solid #EFE9E0;
+        border-radius: 10px;
+        padding: 18px 22px;
+        margin-bottom: 16px;
+        box-shadow: 0 3px 12px rgba(58, 34, 25, 0.05);
+        color: #3A2219;
+        font-family: 'Newsreader', Georgia, serif;
+        font-size: 15.5px;
+        line-height: 1.6;
+    }
+    .editorial-card-title {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #8C6F62;
+        margin-bottom: 8px;
+    }
+    .citation-chip {
+        display: inline-flex;
+        align-items: center;
+        background: #EFE9E0;
+        color: #3A2219;
+        border: 1px solid #D8CFC4;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 4px;
     }
 
-    /* KPI Telemetry Cards (Left Column) */
-    .kpi-grid {
+    /* Metric & Telemetry Strip */
+    .editorial-metric-strip {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-bottom: 14px;
+        gap: 10px;
+        background: #FDFBF7;
+        border: 1px solid #EFE9E0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(58, 34, 25, 0.04);
     }
-    .kpi-card {
-        background: #161B22;
-        border: 1px solid #30363D;
-        border-radius: 8px;
-        padding: 10px 12px;
-    }
-    .kpi-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #8B949E;
+    .editorial-metric-item { display: flex; flex-direction: column; }
+    .editorial-metric-label {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 11px;
         font-weight: 600;
+        color: #8C6F62;
+        text-transform: uppercase;
     }
-    .kpi-value {
-        font-size: 18px;
+    .editorial-metric-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
         font-weight: 700;
-        color: #F0F6FC;
+        color: #3A2219;
         margin-top: 2px;
     }
 
-    /* Dynamic Modality Glow Badges */
-    .badge-vector {
-        background: rgba(16, 185, 129, 0.15);
-        border: 1px solid #10B981;
-        color: #34D399;
-        padding: 4px 10px;
-        border-radius: 6px;
+    /* Modality Badges */
+    .modality-badge {
+        display: inline-block;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 11px;
         font-weight: 700;
-        font-size: 12px;
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 4px;
     }
-    .badge-graph {
-        background: rgba(6, 182, 212, 0.15);
-        border: 1px solid #06B6D4;
-        color: #38BDF8;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-weight: 700;
-        font-size: 12px;
-        box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
-    }
-    .badge-hybrid {
-        background: rgba(139, 92, 246, 0.15);
-        border: 1px solid #8B5CF6;
-        color: #A78BFA;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-weight: 700;
-        font-size: 12px;
-        box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-    }
+    .modality-vector { background: #E4ECE3; color: #235338; border: 1px solid #BFD2BF; }
+    .modality-graph { background: #E3EBF4; color: #1E3F66; border: 1px solid #BFD2E6; }
+    .modality-hybrid { background: #EFE8E1; color: #533324; border: 1px solid #D6C4B8; }
 
-    /* Response Card (Right Column Top) */
-    .response-card {
-        background: #161B22;
-        border: 1px solid #30363D;
-        border-left: 4px solid #6366F1;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        font-size: 14px;
-        line-height: 1.6;
-        color: #F0F6FC;
+    /* Streamlit Component Overrides */
+    .stTextArea textarea {
+        background-color: #FDFBF7 !important;
+        color: #3A2219 !important;
+        border: 1px solid #D8CFC4 !important;
+        border-radius: 8px !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-size: 14px !important;
     }
-
-    /* Step Tracker */
-    .step-tracker {
+    .stTextArea textarea:focus {
+        border-color: #3A2219 !important;
+        box-shadow: 0 0 0 2px rgba(58, 34, 25, 0.15) !important;
+    }
+    div.stButton > button[kind="primary"] {
+        background-color: #3A2219 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #3A2219 !important;
+        border-radius: 8px !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-weight: 600 !important;
+        box-shadow: 0 2px 6px rgba(58, 34, 25, 0.2) !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #523528 !important;
+        color: #FFFFFF !important;
+    }
+    div.stButton > button[kind="secondary"] {
+        background-color: #FDFBF7 !important;
+        color: #3A2219 !important;
+        border: 1px solid #D8CFC4 !important;
+        border-radius: 8px !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-weight: 500 !important;
+    }
+    .streamlit-expanderHeader {
+        background-color: #FDFBF7 !important;
+        color: #3A2219 !important;
+        border: 1px solid #EFE9E0 !important;
+        border-radius: 8px !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-weight: 600 !important;
+    }
+    .streamlit-expanderContent {
+        background-color: #FDFBF7 !important;
+        border: 1px solid #EFE9E0 !important;
+        border-top: none !important;
+    }
+    button[data-baseweb="tab"] {
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        color: #6E5347 !important;
+        font-weight: 600 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #3A2219 !important;
+        border-bottom-color: #3A2219 !important;
+    }
+    .editorial-timeline {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: #161B22;
-        border: 1px solid #30363D;
+        background: #FDFBF7;
+        border: 1px solid #EFE9E0;
         border-radius: 8px;
-        padding: 10px 14px;
-        margin-bottom: 12px;
+        padding: 12px 18px;
+        margin-bottom: 16px;
     }
-    .step-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-    }
-    .step-title {
-        font-size: 11px;
-        font-weight: 600;
-        color: #C9D1D9;
-    }
-    .step-time {
-        font-size: 10px;
-        color: #58A6FF;
-        font-family: monospace;
-    }
-    .step-arrow {
-        color: #484F58;
-        font-size: 14px;
-    }
+    .editorial-step-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600; color: #3A2219; }
+    .editorial-step-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8C6F62; }
 </style>
 """

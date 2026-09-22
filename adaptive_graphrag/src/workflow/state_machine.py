@@ -49,29 +49,53 @@ async def retriever_node(state: GraphRAGState) -> Dict[str, Any]:
     strategy = state.get("routing_strategy", "vector")
     query = state.get("query_rewritten", state["query_raw"])
     entities = state.get("entities", [])
-    depth = state.get("estimated_depth", 2)
+    depth = max(3, state.get("estimated_depth", 3))
+    uploaded_docs = state.get("uploaded_documents", [])
+
+    # Dynamic Modality Override: if user files are uploaded, always run hybrid retrieval
+    if uploaded_docs:
+        strategy = "hybrid"
 
     v_chunks: List[Dict[str, Any]] = []
     g_triples: List[Dict[str, Any]] = []
 
     if strategy in ("vector", "hybrid"):
-        v_chunks = await vector_store.search(query=query, top_k=3)
+        v_chunks = await vector_store.search(
+            query=query,
+            top_k=6,
+            source_filter=uploaded_docs if uploaded_docs else None,
+        )
 
     if strategy in ("graph", "hybrid"):
-        g_triples = await graph_store.query_subgraph(entities=entities, depth=depth)
+        g_triples = await graph_store.query_subgraph(
+            entities=entities,
+            depth=depth,
+            source_filter=uploaded_docs if uploaded_docs else None,
+        )
 
-    # Fuse context representation
+    # Ensure extracted triples from uploaded documents are always retrieved
+    if uploaded_docs and not g_triples:
+        g_triples = await graph_store.query_subgraph(
+            entities=[],
+            depth=depth,
+            source_filter=uploaded_docs,
+        )
+
+    # Fuse context representation with clean document source labels
     context_blocks: List[str] = []
     if strategy == "hybrid":
         fused = reciprocal_rank_fusion(v_chunks, g_triples)
-        for item in fused[:5]:
-            context_blocks.append(f"[{item['id']} ({item['source']})]: {item['text']}")
+        for item in fused[:12]:
+            doc_label = item.get("doc_name") or item.get("id")
+            context_blocks.append(f"[{doc_label}]: {item['text']}")
     else:
         for c in v_chunks:
-            context_blocks.append(f"[{c['chunk_id']}]: {c['text']}")
+            doc_label = c.get("metadata", {}).get("source") or c.get("chunk_id")
+            context_blocks.append(f"[{doc_label}]: {c['text']}")
         for t in g_triples:
+            doc_label = t.get("source") or t.get("triple_id", "T")
             context_blocks.append(
-                f"[{t.get('triple_id', 'T')}]: ({t.get('subject')}) -[{t.get('predicate')}]-> ({t.get('object')}) (weight: {t.get('weight', 1.0):.2f})"
+                f"[{doc_label}]: ({t.get('subject')}) -[{t.get('predicate')}]-> ({t.get('object')}) (weight: {t.get('weight', 1.0):.2f})"
             )
 
     fused_context = "\n".join(context_blocks)
@@ -80,6 +104,7 @@ async def retriever_node(state: GraphRAGState) -> Dict[str, Any]:
     trace.append({"node": "retriever", "duration_ms": duration, "chunks": len(v_chunks), "triples": len(g_triples)})
 
     return {
+        "routing_strategy": strategy,
         "retrieved_vector_chunks": v_chunks,
         "retrieved_graph_triples": g_triples,
         "fused_context": fused_context,
@@ -110,6 +135,7 @@ async def verifier_node(state: GraphRAGState) -> Dict[str, Any]:
         generated_response=state.get("generated_response", ""),
         fused_context=state.get("fused_context", ""),
         retrieved_triples=state.get("retrieved_graph_triples", []),
+        numerical_extractions=state.get("numerical_extractions", {}),
     )
     duration = round((time.time() - start_t) * 1000, 2)
     trace = list(state.get("execution_trace", []))
@@ -188,7 +214,11 @@ def build_graphrag_graph() -> StateGraph:
     return workflow.compile()
 
 
-async def execute_graphrag_pipeline(query: str) -> GraphRAGState:
+async def execute_graphrag_pipeline(
+    query: str,
+    numerical_extractions: Optional[Dict[str, Any]] = None,
+    uploaded_documents: Optional[List[str]] = None,
+) -> GraphRAGState:
     """Executes state machine pipeline and returns final state."""
     app = build_graphrag_graph()
     initial_state: GraphRAGState = {
@@ -209,6 +239,9 @@ async def execute_graphrag_pipeline(query: str) -> GraphRAGState:
         "memory_logs": [],
         "execution_trace": [],
         "fallback_invoked": False,
+        "numerical_extractions": numerical_extractions or {},
+        "math_verification": {},
+        "uploaded_documents": uploaded_documents or [],
     }
     final_state = await app.ainvoke(initial_state)
     return final_state

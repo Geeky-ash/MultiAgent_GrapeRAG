@@ -46,6 +46,18 @@ class GraphStore:
             {"triple_id": "T8", "subject": "Microsoft_Azure", "predicate": "HOSTS_LLM_INFRASTRUCTURE_FOR", "object": "OpenAI", "t_e": current_day - 8, "w0": 1.0},
         ]
 
+    def add_triples(self, new_triples: List[Dict[str, Any]]) -> None:
+        """Appends newly ingested triples (e.g. from parsed PDFs) into active graph."""
+        existing_ids = {t.get("triple_id") for t in self._in_memory_triples}
+        for t in new_triples:
+            if t.get("triple_id") not in existing_ids:
+                self._in_memory_triples.append(t)
+                existing_ids.add(t.get("triple_id"))
+
+    def clear_custom_triples(self) -> None:
+        """Resets the in-memory graph to default seed state."""
+        self._seed_default_graph()
+
     async def connect(self) -> bool:
         """Attempts connection to Neo4j driver; gracefully falls back to mock."""
         try:
@@ -90,19 +102,21 @@ class GraphStore:
     async def query_subgraph(
         self,
         entities: List[str],
-        depth: int = 2,
+        depth: int = 3,
         t_0: Optional[float] = None,
+        source_filter: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
-        """Retrieves subgraphs for entity list and filters by temporal decay."""
+        """Retrieves subgraphs for entity list traversing up to depth hops (default 3)."""
         if not self._is_connected:
-            return self._query_in_memory_subgraph(entities, depth, t_0)
+            return self._query_in_memory_subgraph(entities, depth, t_0, source_filter=source_filter)
 
-        # Parameterized Cypher query to prevent injection
         cypher = (
-            "MATCH (s:Entity)-[r]->(o:Entity) "
-            "WHERE s.name IN $entities OR o.name IN $entities "
-            "RETURN s.name as subject, type(r) as predicate, o.name as object, "
-            "r.timestamp as t_e, coalesce(r.weight, 1.0) as w0, id(r) as triple_id"
+            f"MATCH path = (s:Entity)-[r*1..{depth}]-(o:Entity) "
+            "WHERE s.name IN $entities "
+            "UNWIND relationships(path) as rel "
+            "RETURN DISTINCT startNode(rel).name as subject, type(rel) as predicate, "
+            "endNode(rel).name as object, rel.timestamp as t_e, "
+            "coalesce(rel.weight, 1.0) as w0, id(rel) as triple_id"
         )
         try:
             async with self.driver.session(database=settings.neo4j_database) as session:
@@ -110,28 +124,64 @@ class GraphStore:
                 records = [record.data() async for record in result]
                 return self.filter_triples_by_temporal_decay(records, t_0)
         except Exception:
-            return self._query_in_memory_subgraph(entities, depth, t_0)
+            return self._query_in_memory_subgraph(entities, depth, t_0, source_filter=source_filter)
 
     def _query_in_memory_subgraph(
         self,
         entities: List[str],
-        depth: int = 2,
+        depth: int = 3,
         t_0: Optional[float] = None,
+        source_filter: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
-        """In-memory fallback graph search matching entities."""
-        matched: List[Dict[str, Any]] = []
-        normalized_entities = [e.lower() for e in entities] if entities else []
+        """In-memory multi-hop graph search traversing up to depth hops (default 3)."""
+        candidates = self._in_memory_triples
+        if source_filter:
+            doc_triples = [
+                t for t in self._in_memory_triples
+                if t.get("source") in source_filter
+                or any(sf.lower() in str(t.get("source", "")).lower() for sf in source_filter)
+            ]
+            if doc_triples:
+                candidates = doc_triples
+            elif not self._in_memory_triples:
+                return []
 
-        for item in self._in_memory_triples:
-            if not normalized_entities:
-                matched.append(item)
-                continue
-            subj = str(item["subject"]).lower()
-            obj = str(item["object"]).lower()
-            if any(e in subj or e in obj for e in normalized_entities):
-                matched.append(item)
+        if not entities:
+            return self.filter_triples_by_temporal_decay(candidates, t_0)
 
-        return self.filter_triples_by_temporal_decay(matched or self._in_memory_triples[:5], t_0)
+        matched_triples: List[Dict[str, Any]] = []
+        visited_ids = set()
+        normalized_entities = [e.lower().strip() for e in entities if e.strip()]
+        current_frontier = set(normalized_entities)
+
+        for _ in range(max(1, depth)):
+            next_frontier = set()
+            added_in_hop = False
+            for item in candidates:
+                tid = item.get("triple_id") or f"{item.get('subject')}_{item.get('predicate')}_{item.get('object')}"
+                if tid in visited_ids:
+                    continue
+                s_lower = str(item.get("subject", "")).lower()
+                o_lower = str(item.get("object", "")).lower()
+                matches = any(
+                    ent in s_lower or s_lower in ent or ent in o_lower or o_lower in ent
+                    for ent in current_frontier
+                )
+                if matches:
+                    matched_triples.append(item)
+                    visited_ids.add(tid)
+                    next_frontier.add(s_lower)
+                    next_frontier.add(o_lower)
+                    added_in_hop = True
+            if not added_in_hop or not next_frontier:
+                break
+            current_frontier = next_frontier
+
+        if not matched_triples and source_filter:
+            matched_triples = candidates
+
+        fallback_triples = candidates if source_filter else self._in_memory_triples[:8]
+        return self.filter_triples_by_temporal_decay(matched_triples or fallback_triples, t_0)
 
 
 _graph_store_instance: Optional[GraphStore] = None

@@ -77,36 +77,73 @@ class VectorStore:
         except Exception:
             self._is_connected = False
 
-    async def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """Performs dense vector similarity search with cosine ranking."""
+    def add_documents(self, new_docs: List[Dict[str, Any]]) -> None:
+        """Appends newly ingested document chunks (e.g. from PDFs) into vector store."""
+        existing_ids = {d["chunk_id"] for d in self._documents}
+        to_add = [d for d in new_docs if d["chunk_id"] not in existing_ids]
+        if not to_add:
+            return
+        self._documents.extend(to_add)
+        for doc in to_add:
+            self._vocab.extend([w for w in doc["text"].lower().split() if w not in self._vocab])
         if self._is_connected and hasattr(self, "_collection"):
             try:
-                results = self._collection.query(query_texts=[query], n_results=top_k)
+                ids = [d["chunk_id"] for d in to_add]
+                texts = [d["text"] for d in to_add]
+                metadatas = [d.get("metadata", {}) for d in to_add]
+                self._collection.upsert(ids=ids, documents=texts, metadatas=metadatas)
+            except Exception:
+                pass
+
+    def clear_custom_documents(self) -> None:
+        """Resets vector documents to default seed state."""
+        self._seed_default_documents()
+        self._init_chroma()
+
+    async def search(self, query: str, top_k: int = 3, source_filter: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Performs dense vector similarity search with cosine ranking and source filtering."""
+        if self._is_connected and hasattr(self, "_collection"):
+            try:
+                where_clause = None
+                if source_filter and len(source_filter) == 1:
+                    where_clause = {"source": source_filter[0]}
+                elif source_filter and len(source_filter) > 1:
+                    where_clause = {"source": {"$in": source_filter}}
+                
+                results = self._collection.query(query_texts=[query], n_results=top_k, where=where_clause)
                 parsed: List[Dict[str, Any]] = []
                 if results and "documents" in results and results["documents"]:
                     docs = results["documents"][0]
                     ids = results["ids"][0]
                     distances = results["distances"][0] if "distances" in results and results["distances"] else [0.2] * len(docs)
                     for chunk_id, text, dist in zip(ids, docs, distances):
-                        # Convert cosine distance to similarity score
                         sim = max(0.0, min(1.0, 1.0 - float(dist)))
-                        parsed.append({
-                            "chunk_id": chunk_id,
-                            "text": text,
-                            "similarity_score": round(sim, 4),
-                        })
-                    return parsed
+                        parsed.append({"chunk_id": chunk_id, "text": text, "similarity_score": round(sim, 4)})
+                    if parsed:
+                        return parsed
             except Exception:
                 pass
 
-        return self._search_in_memory(query, top_k)
+        return self._search_in_memory(query, top_k, source_filter=source_filter)
 
-    def _search_in_memory(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+    def _search_in_memory(self, query: str, top_k: int = 3, source_filter: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """In-memory cosine similarity fallback using normalized token vectors."""
+        candidates = self._documents
+        if source_filter:
+            filtered = [
+                d for d in self._documents
+                if d.get("metadata", {}).get("source") in source_filter
+                or any(sf.lower() in str(d.get("metadata", {}).get("source", "")).lower() for sf in source_filter)
+            ]
+            if filtered:
+                candidates = filtered
+            else:
+                return []
+
         q_vec = compute_token_vector(query, self._vocab)
         scored_docs: List[Dict[str, Any]] = []
 
-        for doc in self._documents:
+        for doc in candidates:
             d_vec = compute_token_vector(doc["text"], self._vocab)
             cosine_sim = sum(q * d for q, d in zip(q_vec, d_vec))
             scored_docs.append({

@@ -20,8 +20,9 @@ class VerifierAgent:
         fused_context: str,
         retrieved_triples: Optional[List[Dict[str, Any]]] = None,
         threshold: Optional[float] = None,
+        numerical_extractions: Optional[Dict[str, Any]] = None,
     ) -> VerificationOutput:
-        """Computes S_total = alpha*S_faith + beta*S_ans_rel + gamma*S_temp."""
+        """Computes S_total = alpha*S_faith + beta*S_ans_rel + gamma*S_temp with math reconciliation."""
         t_verify = threshold if threshold is not None else self.threshold
 
         return evaluate_extrinsic_verification(
@@ -30,4 +31,5 @@ class VerifierAgent:
             query=query_raw,
             retrieved_triples=retrieved_triples,
             threshold=t_verify,
+            numerical_extractions=numerical_extractions,
         )

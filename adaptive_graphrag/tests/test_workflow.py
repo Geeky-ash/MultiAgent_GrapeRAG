@@ -72,3 +72,37 @@ async def test_end_to_end_pipeline_execution():
     assert "retriever" in visited_nodes
     assert "generator" in visited_nodes
     assert "verifier" in visited_nodes
+
+
+@pytest.mark.asyncio
+async def test_uploaded_resume_pipeline_execution():
+    """Validates that uploaded resume documents synthesize skills without TSMC mock text."""
+    from src.storage.pdf_parser import parse_financial_entities, generate_triples_and_chunks
+    from src.storage.graph_store import get_graph_store
+    from src.storage.vector_store import get_vector_store
+
+    resume_text = (
+        "Ashirwad Sharma\nSenior AI Engineer\n"
+        "Skills: Python, Neo4j, Docker, LangGraph, GraphRAG, PyTorch\n"
+        "Experience: Lead Engineer at CloudTech"
+    )
+    parsed = parse_financial_entities(resume_text, "Resume.pdf")
+    triples, chunks = generate_triples_and_chunks(parsed, 1)
+    get_graph_store().add_triples(triples)
+    get_vector_store().add_documents(chunks)
+
+    query = "What skills does the candidate have in the resume?"
+    state = await execute_graphrag_pipeline(
+        query=query,
+        uploaded_documents=["Resume.pdf"]
+    )
+
+    assert state is not None
+    resp = state["generated_response"]
+    # Check that skills are present and TSMC is NOT present
+    assert "Python" in resp or "Neo4j" in resp or "GraphRAG" in resp
+    assert "TSMC" not in resp
+    assert "Apple" not in resp
+    assert len(state["retrieved_graph_triples"]) > 0
+    assert any(t.get("predicate") == "HAS_SKILL" for t in state["retrieved_graph_triples"])
+

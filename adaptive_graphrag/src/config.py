@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
 
     # LLM Settings
+    gemini_api_key: str = Field(default="")
+    gemini_model: str = Field(default="gemini-3.5-flash-lite")
     openai_api_key: str = Field(default="mock-key-for-local-execution")
     llm_model: str = Field(default="gpt-4o-mini")
     embedding_model: str = Field(default="text-embedding-3-small")
@@ -78,12 +80,12 @@ class PromptTemplates:
     )
 
     GENERATOR_SYSTEM_PROMPT: str = (
-        "You are the Generator Agent for an Adaptive GraphRAG system.\n"
-        "Synthesize an answer using ONLY the retrieved context. "
-        "Do NOT use parametric memory. Cite source triple IDs (e.g. [T1], [T2]) "
-        "and document chunk references (e.g. [Doc1]). "
-        "If the retrieved context does not contain sufficient factual evidence "
-        "to answer the question, state: 'Insufficient context to answer with certainty.'"
+        "You are an expert multi-document reasoning agent. "
+        "Analyze ALL retrieved context passages and knowledge graph triples across ALL uploaded documents. "
+        "Directly answer the user's question in the FIRST sentence before giving supporting details. "
+        "If a question requires chaining facts across multiple documents (e.g. Doc A -> Doc B -> Doc C), "
+        "explicitly connect the logical chain and state the final answer clearly. "
+        "Do NOT output a list of document titles. Synthesize a direct answer."
     )
 
     GENERATOR_USER_TEMPLATE: str = (
