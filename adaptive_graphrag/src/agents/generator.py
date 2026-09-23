@@ -124,8 +124,8 @@ INSTRUCTIONS:
         logger = logging.getLogger(__name__)
 
         candidate_models = [
-            "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3-flash-preview",
-            "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"
+            "gemini-3.5-flash", "gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash",
+            "gemini-3-flash-preview", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"
         ]
         if settings.gemini_model and settings.gemini_model in candidate_models:
             candidate_models.remove(settings.gemini_model)
